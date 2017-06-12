@@ -18,6 +18,7 @@ WINDOW *create_newwin(int h, int w, int y, int x)
     local_win = newwin(h, w,y,x);
     box(local_win, 0,0);
     wrefresh(local_win);
+
     return local_win;
 }
 
@@ -50,9 +51,8 @@ void direct(char dp[255])
     struct dirent *entry;
     char **filenames;
     char user_char;
-//    char position_symbol[] = "->";
     char path[255];
-//    int user_position = 0;
+    int user_position = 0;
     int i;
 
     strcpy(path, dp);
@@ -67,21 +67,47 @@ void direct(char dp[255])
 
     while((entry = readdir(dir)) != NULL){
 	filenames[i] = entry->d_name;
-	print(my_win, i+1, 2, filenames[i]);
-	print(my_win_2, i+1, 2, filenames[i]);
     	i++;
+		
     }
 
-//    int count = i;
+    int count = i;
+    while(true){
+        clear();
+	for(i = 0; i < count; i++){
+	    if(i == user_position)
+    		addch('>');
+	    else
+		addch(' ');
+		printw("%s\n",filenames[i]);
+    
 
-    closedir(dir);
-
-    user_char = getchar();
-    switch(user_char){
-        case 'q':
-    	    endwin();
-	    exit(0);
-    }
+	}
+    
+	i = 0;
+        switch(getch()){
+	    case KEY_UP:
+		if(user_position > 0)
+		    user_position--;
+		break;
+	    case KEY_DOWN:
+		if(user_position < count)
+		    user_position++;
+		break;
+	    case 'm':
+		strcat(path,"/");
+		strcat(path, filenames[user_position]);
+		if(strcmp(filenames[user_position], "..") == 0)
+		    chdir("..");
+		direct(path);
+		free(filenames);
+		closedir(dir);
+    	    case 'q':
+    		endwin();
+		exit(0);
+	}
+      }
+//    closedir(dir);
 }
 
 
@@ -104,9 +130,9 @@ void window(char dp[255])
 	refresh();
 	color_pair();
 	my_win=create_newwin(h,w,y,x);
-	wbkgd(my_win, COLOR_PAIR(1));
+	wbkgd(my_win, COLOR_PAIR(2));
 	my_win_2 = create_newwin(h,w,y,x+w);
-	wbkgd(my_win_2, COLOR_PAIR(1));
+	wbkgd(my_win_2, COLOR_PAIR(2));
 	wrefresh(my_win);	
 	wrefresh(my_win_2);
 
@@ -126,7 +152,6 @@ int main()
     char path[256] = "/";
 
     window(path);
-//    direct(path);
     
     return 0;
 
