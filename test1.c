@@ -8,54 +8,69 @@
 #include <dirent.h>
 #include <string.h>
 
-WINDOW *my_win;
-WINDOW *my_win_2;
-
-WINDOW *create_newwin(int h, int w, int y, int x)
+void print(WINDOW *win, char **filenames, int count, int user_pos, int color_bg)
 {
-    WINDOW *local_win;
+	int i;
+	wclear(win);
+	for(i = 0; i < count; i++){
+		if(i == user_pos){
+			wattron(win, COLOR_PAIR(color_bg));
+			wprintw(win, "   %s\t\t\t\t\t\t\t\t\t\t\t\n", filenames[i]);
+			wattroff(win, COLOR_PAIR(color_bg));
+		}
+		else
+			wprintw(win, "   %s\n", filenames[i]);
+	}
 
-    local_win = newwin(h, w,y,x);
-    box(local_win, 0,0);
-    wrefresh(local_win);
-    return local_win;
+	wrefresh(win);
+
 }
 
-void sig_winch(int signo)
+void print_tab(WINDOW *win, char **filenames, int count, int user_pos, int color_bg)
 {
-	struct winsize size;
-	ioctl(fileno(stdout), TIOCGWINSZ, (char*) &size);
-	resizeterm(size.ws_row, size.ws_col);
+	int i;
+	wclear(win);
+	for(i = 0; i < count; i++)
+		wprintw(win, "   %s\n", filenames[i]);
+	wrefresh(win);
 }
 
-void color_pair()
+char** direct(char *dp, int *count)
 {
-    start_color();
-    refresh();
-    init_pair(1, COLOR_WHITE, COLOR_BLUE);
-    init_pair(2, COLOR_GREEN, COLOR_BLACK);
-    init_pair(3, COLOR_YELLOW, COLOR_RED);
+	struct dirent **entry;
+	char **filenames;
+	int i;
+
+	(*count) = 0;
+	(*count) = scandir(dp, &entry, 0, alphasort);
+	filenames = (char**)malloc(sizeof(char*)*(*count));
+	for(i = 1; i < (*count); ++i){
+		filenames[i - 1] = malloc(255);
+		strcpy(filenames[i - 1], entry[i]->d_name);
+	}
+	(*count)--;
+	return filenames;
 }
 
-void print(WINDOW *my_win,int x, int y, char *str)
+void color_pair(WINDOW *win, int color_bg)
 {
-    mvwprintw(my_win, x, y, "%s",str);
-    wrefresh(my_win);
+	start_color();
+	init_pair(1, COLOR_WHITE, COLOR_CYAN);
+	init_pair(2, COLOR_WHITE, COLOR_BLUE);
+
+	wbkgd(win, COLOR_PAIR(color_bg));
 }
 
-void direct(char dp[255])
+
+/*
+
+char** direct(char *dp, int *count)
 {
     DIR *dir;
-    
+ 
     struct dirent *entry;
     char **filenames;
-    char user_char;
-//    char position_symbol[] = "->";
-    char path[255];
-//    int user_position = 0;
-    int i;
 
-    strcpy(path, dp);
     dir = opendir(dp);
 
     if(!dir){
@@ -63,71 +78,112 @@ void direct(char dp[255])
 	exit(1);
     }
 
-    filenames = malloc(sizeof(char*)*255);
+    filenames =(char **)malloc(sizeof(char*));
 
     while((entry = readdir(dir)) != NULL){
-	filenames[i] = entry->d_name;
-	print(my_win, i+1, 2, filenames[i]);
-	print(my_win_2, i+1, 2, filenames[i]);
-    	i++;
+	filenames = (char**)realloc(filenames, sizeof(char*) * (*count+1));
+	filenames[*count] = (char*)malloc(255);
+	strcpy(filenames[*count], entry->d_name);
+//	filenames[*count] = entry->d_name;
+  	(*count)++;
     }
-
-//    int count = i;
 
     closedir(dir);
 
-    user_char = getchar();
-    switch(user_char){
-        case 'q':
-    	    endwin();
-	    exit(0);
-    }
+    return filenames;
 }
+*/
 
-
-void window(char dp[255])
+void window()
 {
-	
-	int x,y,w,h;
+
+	int col, row, count_f_1 = 0, count_f_2 = 0, user_char, active_count;
+	int user_pos = 0, user_pos_right = 0, user_pos_left = 0;
+	char **filenames1 = direct(getenv("HOME"), &count_f_1);
+	char **filenames2 = direct(getenv("HOME"), &count_f_2);
+	char **active_filenames;
+
+	WINDOW *my_win, *my_win_2;
+	WINDOW *my_sub_win, *my_sub_win_2, *active_win;
 
 	initscr();
-	signal(SIGWINCH, sig_winch);
-	nonl();
-	cbreak();
 	curs_set(0);
-	keypad(stdscr, TRUE);
-	h=getmaxy(stdscr);
-	w=getmaxx(stdscr)/2;
-	y=0;
-	x=0;    
-	noecho();
 	refresh();
-	color_pair();
-	my_win=create_newwin(h,w,y,x);
-	wbkgd(my_win, COLOR_PAIR(1));
-	my_win_2 = create_newwin(h,w,y,x+w);
-	wbkgd(my_win_2, COLOR_PAIR(1));
-	wrefresh(my_win);	
+	getmaxyx(stdscr, row, col);
+	my_win = newwin(row, col / 2 , 0, 0);
+	box(my_win, 0, 0);
+	my_sub_win = derwin(my_win, row - 2, col / 2 - 2, 1, 1);
+	my_win_2 = newwin(row, col/2, 0, col/2);
+	box(my_win_2, 0, 0);
+	my_sub_win_2 = derwin(my_win_2, row - 2, col / 2 - 2 , 1, 1);
+	keypad(stdscr, true);
+	cbreak();
+	user_pos = count_f_1;
+
+	color_pair(my_win, 2);
+	color_pair(my_win_2, 2);
+	color_pair(my_sub_win, 2);
+	color_pair(my_sub_win_2, 2);
+
+	print(my_sub_win, filenames1, count_f_1, user_pos, 1);
+	print(my_sub_win_2, filenames2, count_f_2, user_pos, 1);
+	wrefresh(my_win);
 	wrefresh(my_win_2);
 
-	direct(dp);
+	active_win = my_sub_win;
+	active_count = count_f_1;
+	active_filenames = filenames1;
 
-/*	switch(getchar()){
-	    case 'q':
-		endwin();
-		exit(0);
+	noecho();
+
+	while((user_char = getch()) != 'q' ){
+		switch(user_char){
+			case KEY_UP:
+				if(user_pos > 0)
+					user_pos--;
+				print(active_win, active_filenames, active_count, user_pos, 1);
+				break;
+			case KEY_DOWN:
+				if(user_pos < active_count - 1)
+					user_pos++;
+				print(active_win, active_filenames, active_count, user_pos, 1);
+				break;
+			case 0x9:
+				if(active_win == my_sub_win){
+					print_tab(active_win, active_filenames, active_count, user_pos, 1);
+					active_win = my_sub_win_2;
+					active_filenames = filenames2;
+					active_count = count_f_2;
+					user_pos_left = user_pos;
+					user_pos = user_pos_right;
+					print(active_win, active_filenames, active_count, user_pos, 1);
+				}
+				else 
+					if(active_win == my_sub_win_2){
+						print_tab(active_win, active_filenames, active_count, user_pos, 1);
+						active_win = my_sub_win;
+						active_filenames = filenames1;
+						active_count = count_f_1;
+						user_pos_right = user_pos;
+						user_pos = user_pos_left;
+						print(active_win, active_filenames, active_count, user_pos, 1);
+					}
+				break;
+		}
+		wrefresh(my_sub_win);
 	}
-*/
+	endwin();
+	exit(0);
+
+
 }
 
 
 int main()
 {
-    char path[256] = "/";
 
-    window(path);
-//    direct(path);
-    
+    window();
+
     return 0;
 
 }
