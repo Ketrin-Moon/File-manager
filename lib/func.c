@@ -30,7 +30,7 @@ void **draw_menu(int start_col)
 	wprintw(items[0], "\tLeft panel\t\tFile\t\tCommand\t\tSettings\t    Right panel");
 	items[1] = newwin(row / 2 - 5, col, row-1, start_col);
 	wbkgd(items[1], COLOR_PAIR(1));
-	wprintw(items[1], "   1 Open \t 2 Save \t 3 Exit ");
+	wprintw(items[1], "     1 Open(read) \t\t\t 2 Open(read+write) \t\t\t 3 Exit  ");
 	wrefresh(items[0]);
 	wrefresh(items[1]);
 
