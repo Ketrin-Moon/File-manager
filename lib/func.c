@@ -1,3 +1,4 @@
+#define _SVID_SOURCE
 #include <stdlib.h>
 #include <termios.h>
 #include <sys/ioctl.h>
@@ -8,7 +9,7 @@
 #include <dirent.h>
 #include <string.h>
 #include "../include/func.h"
-
+#include <unistd.h>
 #define MAX_LENGTH 255
 
 /**
@@ -32,6 +33,8 @@ void **draw_menu(int start_col)
 	wprintw(items[1], "   1 Open \t 2 Save \t 3 Exit ");
 	wrefresh(items[0]);
 	wrefresh(items[1]);
+
+	return EXIT_SUCCESS;
 }
 
 /**
@@ -151,7 +154,7 @@ void window()
         char dir_f_1[255], dir_f_2[255];
 
         WINDOW *my_win, *my_win_2;
-        WINDOW *my_sub_win, *my_sub_win_2, *active_win, **items;
+        WINDOW *my_sub_win, *my_sub_win_2, *active_win;
 
         initscr();
         curs_set(0);
@@ -178,7 +181,7 @@ void window()
         wrefresh(my_win);
         wrefresh(my_win_2);
 
-	items = draw_menu(0);
+	draw_menu(0);
 
         active_win = my_sub_win;
         active_count = count_f_1;
