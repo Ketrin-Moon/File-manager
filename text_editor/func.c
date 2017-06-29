@@ -126,18 +126,6 @@ char** read_file(char *filename, int* count)
         return strings;
 }
 
-
-
-/**
-@function color_pair
-Функция, инициализирующая палитру цветов. Задает шаблон цветов, используемых
-для оформления окон.
-@param win - параметр, передающий указатель на окно, в которое необходимо
-вывести список файлов
-@param color_bg - параметр, отвечающий за цвет подсветки позиции, в которой
-находится пользователь
-*/
-
 void color_pair(WINDOW *win, int color_bg)
 {
         start_color();
@@ -146,13 +134,6 @@ void color_pair(WINDOW *win, int color_bg)
 
         wbkgd(win, COLOR_PAIR(color_bg));
 }
-
-/**
-@function window
-Функция отвечает за создание и прорисовку окон, а также вызывает функцию
-чтения директорий, которая отображает все файлы, находящиеся в ней, в окна менеджера.
-Здесь же описана навигация по файловому менеджеру(KEY_UP, KEY_DOWN, TAB, ENTER).
-*/
 
 void window(char* filename)
 {
@@ -164,6 +145,7 @@ void window(char* filename)
         WINDOW *my_win, *work_win;
         WINDOW *my_sub_win, *my_sub_win_2, *active_win;
 
+	system("clear");
         initscr();
         curs_set(2);
         refresh();
@@ -181,7 +163,8 @@ void window(char* filename)
         wrefresh(my_win);
 	wmove(my_win, 0,0);
 	cycle(my_win, 0, 0, row, col, filename, count);
-
+	delwin(my_win);
+	system("clear");
       	endwin();
 }
 
