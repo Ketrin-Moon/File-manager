@@ -1,3 +1,4 @@
+#define _SVID_SOURCE
 #include <stdlib.h>
 #include <termios.h>
 #include <sys/ioctl.h>
@@ -8,14 +9,11 @@
 #include <dirent.h>
 #include <string.h>
 #include "../include/func.h"
-
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #define MAX_LENGTH 255
-
-/**
-@function draw_menu
-Создание верхней и нижней панели.
-@param start_col - параметр, отвечающий за цвет панели
-*/
 
 void **draw_menu(int start_col)
 {
@@ -32,22 +30,10 @@ void **draw_menu(int start_col)
 	wprintw(items[1], "     1 Open(read) \t\t\t 2 Open(read+write) \t\t\t 3 Exit  ");
 	wrefresh(items[0]);
 	wrefresh(items[1]);
+
+	return EXIT_SUCCESS;
 }
 
-/**
-@function print
-Вывод файлов на экран с подсветкой позиции, на которой находится пользователь.
-Используется для активного окна.
-@param win - параметр, передающий указатель на окно, в которое необходимо
-вывести список файлов
-@param filenames - параметр, передающий элементы массива, которые необходимо
-вывести на экран
-@param count - количество элементов массива
-@param user_pos - параметр, отвечающий за позицию, в которой находится
-пользователь
-@param color_bg - параметр, отвечающий за цвет подсветки позиции, в которой
-находится пользователь
-*/
 
 void print(WINDOW *win, char **filenames, int count, int user_pos, int color_bg)
 {
@@ -67,17 +53,6 @@ void print(WINDOW *win, char **filenames, int count, int user_pos, int color_bg)
 
 }
 
-/**
-@function no_print_line
-Функция выводит список файлов без подсветки позиции пользователя. Используется
-для вывода в пассивном окне.
-@param win - параметр, передающий указатель на окно, в которое необходимо
-вывести список файлов
-@param filenames - параметр, передающий элементы массива, которые необходимо
-вывести на экран
-@param count - количество элементов массива
-*/
-
 void no_print_line(WINDOW *win, char **filenames, int count)
 {
         int i;
@@ -87,15 +62,6 @@ void no_print_line(WINDOW *win, char **filenames, int count)
         wrefresh(win);
 }
 
-/**
-@function direct
-Функция считывает содержимое директории и сохраняет в массив(в
-лексикографическом порядке).
-@param dp - параметр, который хранит путь директории, содержимое которой
-необходимо прочитать
-@param count - параметр, отвечающий за количество файлов, находящихся
-в директории
-*/
 
 char** direct(char *dp, int *count)
 {
@@ -114,16 +80,6 @@ char** direct(char *dp, int *count)
         return filenames;
 }
 
-/**
-@function color_pair
-Функция, инициализирующая палитру цветов. Задает шаблон цветов, используемых
-для оформления окон.
-@param win - параметр, передающий указатель на окно, в которое необходимо
-вывести список файлов
-@param color_bg - параметр, отвечающий за цвет подсветки позиции, в которой
-находится пользователь
-*/
-
 void color_pair(WINDOW *win, int color_bg)
 {
         start_color();
@@ -133,12 +89,16 @@ void color_pair(WINDOW *win, int color_bg)
         wbkgd(win, COLOR_PAIR(color_bg));
 }
 
-/**
-@function window
-Функция отвечает за создание и прорисовку окон, а также вызывает функцию
-чтения директорий, которая отображает все файлы, находящиеся в ней, в окна менеджера.
-Здесь же описана навигация по файловому менеджеру(KEY_UP, KEY_DOWN, TAB, ENTER).
-*/
+void init_win()
+{
+	system("clear");
+	initscr();
+	curs_set(0);
+	refresh();
+	keypad(stdscr, true);
+	cbreak();
+	noecho();
+}
 
 void window()
 {
@@ -149,13 +109,15 @@ void window()
         char **filenames2 = direct(getenv("HOME"), &count_f_2);
         char **active_filenames;
         char dir_f_1[255], dir_f_2[255];
+	struct stat sb;
+	int status;
+	pid_t pid;
 
         WINDOW *my_win, *my_win_2;
-        WINDOW *my_sub_win, *my_sub_win_2, *active_win, **items;
+        WINDOW *my_sub_win, *my_sub_win_2, *active_win;
 
-        initscr();
-        curs_set(0);
-        refresh();
+	init_win();
+
         getmaxyx(stdscr, row, col);
         my_win = newwin(row, col / 2 , 0, 0);
 	box(my_win, 0, 0);
@@ -163,8 +125,6 @@ void window()
         my_win_2 = newwin(row, col/2, 0, col/2);
         box(my_win_2, 0, 0);
         my_sub_win_2 = derwin(my_win_2, row - 2, col / 2 - 2 , 1, 1);
-      	keypad(stdscr, true);
-        cbreak();
 
         user_pos = count_f_1;
 
@@ -178,7 +138,7 @@ void window()
         wrefresh(my_win);
         wrefresh(my_win_2);
 
-	items = draw_menu(0);
+	draw_menu(0);
 
         active_win = my_sub_win;
         active_count = count_f_1;
@@ -186,8 +146,6 @@ void window()
 
         strcpy(dir_f_1, getenv("HOME"));
         strcpy(dir_f_2, getenv("HOME"));
-
-        noecho();
 
 	user_pos = 0;
 
@@ -225,39 +183,56 @@ void window()
                                         }
                                 break;
                         case 10:
-                                if(active_win == my_sub_win){
-                                        if(!chdir(dir_f_1)){
-                                                if(!chdir(active_filenames[user_pos])){
-                                                        free(filenames1);
-							filenames1 = NULL;
-                                                        filenames1 = direct(".", &count_f_1);
-                                                        user_pos = 0;
-                                                        active_filenames = filenames1;
-                                                        active_count = count_f_1;
-                                                        getcwd(dir_f_1, MAX_LENGTH);
-                                                        print(active_win, active_filenames, active_count, user_pos, 1);
-                                                }
-                                        }
-                                }
-                                else
-                                        if(!chdir(dir_f_2)){
-                                                if(!chdir(active_filenames[user_pos])){
-                                                        free(filenames2);
-                                                        filenames2 = NULL;
-                                                        filenames2 = direct(".", &count_f_2);
-                                                        user_pos = 0;
-                                                        active_filenames = filenames2;
-                                                        active_count = count_f_2;
-                                                        getcwd(dir_f_2, MAX_LENGTH);
-                                                        print(active_win, active_filenames, active_count, user_pos, 1);
-                                                }
-                                        }
-                                break;
-                }
+				if(lstat(active_filenames[user_pos], &sb) < 0)
+					printf("Lstat error\n");
+				if(S_ISREG(sb.st_mode)){
+					pid = fork();
+					if(pid == 0){
+						execlp("text_editor", "text_editor", active_filenames[user_pos], NULL);
+						exit(0);
+					}
+					wait(&status);
+					init_win();
+					print(active_win, active_filenames, active_count, user_pos, 1);
+					refresh();
+				}
+				else{
+
+                                	if(active_win == my_sub_win){
+                                        	if(!chdir(dir_f_1)){
+                                                	if(!chdir(active_filenames[user_pos])){
+                                                        	free(filenames1);
+								filenames1 = NULL;
+                                                        	filenames1 = direct(".", &count_f_1);
+                                                        	user_pos = 0;
+                                                        	active_filenames = filenames1;
+                                                        	active_count = count_f_1;
+                                                        	getcwd(dir_f_1, MAX_LENGTH);
+                                                        	print(active_win, active_filenames, active_count, user_pos, 1);
+                                                	}
+                                        	}
+                                	}
+                                	else
+                                        	if(!chdir(dir_f_2)){
+                                                	if(!chdir(active_filenames[user_pos])){
+                                                        	free(filenames2);
+                                                        	filenames2 = NULL;
+                                                        	filenames2 = direct(".", &count_f_2);
+                                                        	user_pos = 0;
+                                                        	active_filenames = filenames2;
+                                                        	active_count = count_f_2;
+                                                       	 	getcwd(dir_f_2, MAX_LENGTH);
+                                                        	print(active_win, active_filenames, active_count, user_pos, 1);
+                                                	}
+                                       		}
+				}
+				break;
+		}
                 wrefresh(my_sub_win);
                 wrefresh(active_win);
         }
         endwin();
+	system("clear");
         exit(0);
 }
 

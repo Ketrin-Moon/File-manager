@@ -6,8 +6,8 @@ vpath %.h include
 vpath %.o src:lib
 
 CC:=gcc
-CFLAGS+=
-LDFLAGS+=-lncurses
+FLAGS+= -O2 -Wall -pedantic -ansi 
+LDFLAGS+=-lncurses -std=c99
 
 .PHONY: subdirs $(SUBDIRS)
 
