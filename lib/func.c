@@ -13,7 +13,29 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <pthread.h>
+
 #define MAX_LENGTH 255
+#define COPY_BLOCK_SIZE 10
+
+struct Params{
+    FILE *in;
+    FILE *out;
+};
+
+typedef struct Params params;
+
+void* copy(void *param)
+{
+    unsigned char buf[COPY_BLOCK_SIZE];
+    size_t bytes;
+    params p = *((params*)param);
+
+    while((bytes = fread(buf, sizeof(char), COPY_BLOCK_SIZE, p.in)) != (size_t)EOF && bytes > 0){
+	fwrite(buf, sizeof(char), bytes, p.out);
+    }
+}
+
 
 void **draw_menu(int start_col)
 {
@@ -105,13 +127,15 @@ void window()
 
         int col, row, count_f_1 = 0, count_f_2 = 0, user_char, active_count;
         int user_pos = 0, user_pos_right = 0, user_pos_left = 0;
-        char **filenames1 = direct(getenv("HOME"), &count_f_1);
-        char **filenames2 = direct(getenv("HOME"), &count_f_2);
+        char **filenames1 = direct(getenv("PWD"), &count_f_1);
+        char **filenames2 = direct(getenv("PWD"), &count_f_2);
         char **active_filenames;
         char dir_f_1[255], dir_f_2[255];
 	struct stat sb;
 	int status;
 	pid_t pid;
+	char buffer[256];
+
 
         WINDOW *my_win, *my_win_2;
         WINDOW *my_sub_win, *my_sub_win_2, *active_win;
@@ -144,8 +168,8 @@ void window()
         active_count = count_f_1;
         active_filenames = filenames1;
 
-        strcpy(dir_f_1, getenv("HOME"));
-        strcpy(dir_f_2, getenv("HOME"));
+        strcpy(dir_f_1, getenv("PWD"));
+        strcpy(dir_f_2, getenv("PWD"));
 
 	user_pos = 0;
 
@@ -226,6 +250,49 @@ void window()
                                                 	}
                                        		}
 				}
+				break;
+			case '1':
+				memset(buffer, 0, 256);
+				params *p;
+				pthread_t tid;
+				if(active_win == my_sub_win){
+				    FILE *in = fopen(active_filenames[user_pos], "r");
+    
+	    			    strcat(buffer, dir_f_2);
+				    strcat(buffer, "/");
+				    strcat(buffer, active_filenames[user_pos]);
+
+				    FILE *out = fopen(buffer, "a+");
+				
+				    p = (params*)malloc(sizeof(params));
+				    p->in=in;
+				    p->out=out;
+				    pthread_create(&tid, NULL, copy, (void *)p);
+				    filenames2 = direct(dir_f_2, &count_f_2);
+				    print(my_sub_win_2, filenames2, count_f_2, 0, 1);
+				    wrefresh(my_sub_win_2);
+				    fclose(in);
+				    fclose(out);
+				} else {
+				    FILE *in = fopen(active_filenames[user_pos], "r");
+    
+	    			    strcat(buffer, dir_f_1);
+				    strcat(buffer, "/");
+				    strcat(buffer, active_filenames[user_pos]);
+
+				    FILE *out = fopen(buffer, "a+");
+				
+				    p = (params*)malloc(sizeof(params));
+				    p->in=in;
+				    p->out=out;
+				    pthread_create(&tid, NULL, copy, (void *)p);
+				    filenames1 = direct(dir_f_1, &count_f_1);
+				    print(my_sub_win, filenames1, count_f_1, 0, 1);
+				    wrefresh(my_sub_win);
+				    fclose(in);
+				    fclose(out);
+				}
+				
 				break;
 		}
                 wrefresh(my_sub_win);

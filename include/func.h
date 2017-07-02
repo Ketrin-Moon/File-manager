@@ -1,3 +1,6 @@
+
+void* copy(void* param);
+
 /**
 * @function Draw_panel -
 * @detail creation of upper and lower panels

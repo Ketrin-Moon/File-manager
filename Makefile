@@ -7,7 +7,7 @@ vpath %.o src:lib
 
 CC:=gcc
 FLAGS+= -O2 -Wall -pedantic -ansi 
-LDFLAGS+=-lncurses -std=c99
+LDFLAGS+=-lncurses -std=c99 -lpthread
 
 .PHONY: subdirs $(SUBDIRS)
 
