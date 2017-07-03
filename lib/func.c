@@ -21,6 +21,8 @@
 struct Params{
     FILE *in;
     FILE *out;
+    char dir1[255];
+    char dir2[255];
 };
 
 typedef struct Params params;
@@ -37,29 +39,28 @@ void* copy(void *param)
 
 }
 
-void print_win(char* dir_f_1)
+void print_win(void* param)
 {
 	WINDOW *win, *subwin, *subwin2;
 	int row, col;
+	params p = *((params*)param);
 
 	getmaxyx(stdscr, row, col);
-	win = newwin(row/2 - 10, col/2, 17, 52);
+	win = newwin(row/2 - 10, col/2, 15, 30);
 	box(win, 0,0);
-	subwin = newwin(row/2 - 25+1, col/2 - 10, 27, 57);
-	box(subwin, 0,0);
-	subwin2 = newwin(row/2 - 25+1, col/2 - 10, 21, 57);
-	box(subwin2, 0,0);
-	color_pair(win, 1);
+	subwin = newwin(row/2 - 20, col/2 - 10, 22, 35);
+	subwin2 = newwin(row/2 - 20, col/2 - 10, 18, 35);
+	color_pair(win, 3);
 	color_pair(subwin, 1);
 	color_pair(subwin2, 1);
-	wprintw(subwin, "%s", dir_f_1);
-//	wprintw(subwin2, "%s", );
+	wprintw(subwin, "%s", p.dir1);
+	wprintw(subwin2, "%s", p.dir2);
 	wrefresh(win);
 	wrefresh(subwin);
 	wrefresh(subwin2);
-	delwin(win);
-	delwin(subwin);
-	delwin(subwin2);
+//	delwin(win);
+//	delwin(subwin);
+//	delwin(subwin2);
 }
 
 
@@ -133,6 +134,7 @@ void color_pair(WINDOW *win, int color_bg)
         start_color();
         init_pair(1, COLOR_BLACK, COLOR_CYAN);
         init_pair(2, COLOR_WHITE, COLOR_BLUE);
+	init_pair(3, COLOR_BLACK, COLOR_WHITE);
 
         wbkgd(win, COLOR_PAIR(color_bg));
 }
@@ -281,11 +283,15 @@ void window()
 				memset(buffer, 0, 256);
 				params *p;
 				pthread_t tid[2];
-				
+
+				p = (params*)malloc(sizeof(params));
+				strcpy(p->dir1, dir_f_1);
+				strcpy(p->dir2, dir_f_2);
+
 				FILE *in, *out;
 
-				pthread_create(&(tid[0]), NULL, print_win, (char*)dir_f_1);
-				sleep(1);
+				pthread_create(&(tid[0]), NULL, print_win, (void *)p);
+
 				if(active_win == my_sub_win){
 				    in = fopen(active_filenames[user_pos], "r");
 
@@ -298,7 +304,6 @@ void window()
 				    p = (params*)malloc(sizeof(params));
 				    p->in=in;
 				    p->out=out;
-				    sleep(1);
 				    status = pthread_create(&(tid[1]), NULL, copy, (void *)p);
 				    filenames2 = direct(dir_f_2, &count_f_2);
 				    print(active_win, active_filenames, active_count, user_pos, 1);
@@ -324,10 +329,18 @@ void window()
 				    p->out=out;
 				    pthread_create(&(tid[1]), NULL, copy, (void *)p);
 				    filenames1 = direct(dir_f_1, &count_f_1);
+				    print(active_win, active_filenames, active_count, user_pos, 1);
 				    print(my_sub_win, filenames1, count_f_1, 0, 1);
+				    color_pair(my_win, 2);
+				    color_pair(my_win_2, 2);
+				    wrefresh(my_win);
+				    wrefresh(my_win_2);
+				    draw_menu(0);
+ 				    wrefresh(active_win);
 				    wrefresh(my_sub_win);
 				}
 				status = pthread_join(tid[1], &status);
+//				status = pthread_join(tid[0], &status);
 				fclose(in);
 				fclose(out);
 
